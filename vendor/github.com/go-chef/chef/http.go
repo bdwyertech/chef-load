@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -38,17 +39,18 @@ type AuthConfig struct {
 
 // Client is vessel for public methods used against the chef-server
 type Client struct {
-	Auth    *AuthConfig
-	BaseURL *url.URL
-	client  *http.Client
+	Auth       *AuthConfig
+	BaseURL    *url.URL
+	client     *http.Client
+	IsWebuiKey bool
 
 	ACLs              *ACLService
 	Associations      *AssociationService
 	AuthenticateUser  *AuthenticateUserService
 	Clients           *ApiClientService
 	Containers        *ContainerService
-	Cookbooks         *CookbookService
 	CookbookArtifacts *CBAService
+	Cookbooks         *CookbookService
 	DataBags          *DataBagService
 	Environments      *EnvironmentService
 	Groups            *GroupService
@@ -91,6 +93,9 @@ type Config struct {
 
 	// Authentication Protocol Version
 	AuthenticationVersion string
+
+	// When set to true corresponding API is using webui key in the request
+	IsWebuiKey bool
 }
 
 /*
@@ -233,6 +238,7 @@ func NewClient(cfg *Config) (*Client, error) {
 		},
 		BaseURL: baseUrl,
 	}
+	c.IsWebuiKey = cfg.IsWebuiKey
 	c.ACLs = &ACLService{client: c}
 	c.AuthenticateUser = &AuthenticateUserService{client: c}
 	c.Associations = &AssociationService{client: c}
@@ -343,6 +349,9 @@ func (c *Client) NewRequest(method string, requestUrl string, body io.Reader) (*
 		req.Header.Set("X-Ops-Content-Hash", myBody.Hash())
 	}
 
+	if c.IsWebuiKey {
+		req.Header.Set("X-Ops-Request-Source", "web")
+	}
 	err = c.Auth.SignRequest(req)
 	if err != nil {
 		return nil, err
@@ -521,16 +530,17 @@ func (ac AuthConfig) SignRequest(request *http.Request) error {
 		"X-Ops-Timestamp":          time.Now().UTC().Format(time.RFC3339),
 		"X-Ops-Content-Hash":       request.Header.Get("X-Ops-Content-Hash"),
 		"X-Ops-UserId":             ac.ClientName,
+		"X-Ops-Request-Source":     request.Header.Get("X-Ops-Request-Source"),
 	}
 
 	if ac.AuthenticationVersion == "1.3" {
 		vals["Path"] = endpoint
 		vals["X-Ops-Sign"] = "version=1.3"
-		request_headers = []string{"Method", "Path", "Accept", "X-Chef-Version", "X-Ops-Server-API-Version", "X-Ops-Timestamp", "X-Ops-UserId", "X-Ops-Sign"}
+		request_headers = []string{"Method", "Path", "Accept", "X-Chef-Version", "X-Ops-Server-API-Version", "X-Ops-Timestamp", "X-Ops-UserId", "X-Ops-Sign", "X-Ops-Request-Source"}
 	} else {
 		vals["Hashed Path"] = HashStr(endpoint)
 		vals["X-Ops-Sign"] = "algorithm=sha1;version=1.0"
-		request_headers = []string{"Method", "Accept", "X-Chef-Version", "X-Ops-Server-API-Version", "X-Ops-Timestamp", "X-Ops-UserId", "X-Ops-Sign"}
+		request_headers = []string{"Method", "Accept", "X-Chef-Version", "X-Ops-Server-API-Version", "X-Ops-Timestamp", "X-Ops-UserId", "X-Ops-Sign", "X-Ops-Request-Source"}
 	}
 
 	// Add the vals to the request
@@ -590,15 +600,24 @@ func (ac AuthConfig) SignatureContent(vals map[string]string) (content string) {
 	return
 }
 
-// PrivateKeyFromString parses an RSA private key from a string
+// PrivateKeyFromString parses an private key from a string
 func PrivateKeyFromString(key []byte) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode(key)
 	if block == nil {
 		return nil, fmt.Errorf("private key block size invalid")
 	}
-	rsaKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	if err != nil {
-		return nil, err
+
+	if key, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
+		return key, nil
 	}
-	return rsaKey, nil
+	if key, err := x509.ParsePKCS8PrivateKey(block.Bytes); err == nil {
+		switch key := key.(type) {
+		case *rsa.PrivateKey:
+			return key, nil
+		default:
+			return nil, errors.New("tls: found unknown private key type in PKCS#8 wrapping")
+		}
+	}
+
+	return nil, errors.New("tls: failed to parse private key")
 }
