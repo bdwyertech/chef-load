@@ -22,7 +22,6 @@ package chef_load
 // to the data-collector endpoint
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -43,10 +42,8 @@ func GenerateData(config *Config) error {
 
 	go func() {
 		for {
-			select {
-			case req := <-requests:
-				numRequests.addRequest(request{Method: req.Method, Url: req.Url, StatusCode: req.StatusCode})
-			}
+			req := <-requests
+			numRequests.addRequest(request{Method: req.Method, Url: req.Url, StatusCode: req.StatusCode})
 		}
 	}()
 
@@ -177,7 +174,7 @@ func GenerateCCRs(config *Config, requests chan *request) (err error) {
 						"total_ccrs":                      ccrsTotal * int64(config.NumNodes),
 						"total_ccrs_ingested":             (c * int64(config.NumNodes)) + int64(j*config.Threads) + ccrsIngested,
 						"sleep":                           fmt.Sprintf("%ds", config.SleepTimeOnFailure),
-						"time_elapsed_since_last_failure": time.Now().Sub(timeMarker),
+						"time_elapsed_since_last_failure": time.Since(timeMarker),
 						"ccr_ingested_since_last_failure": ccrsIngested,
 						"ccr_rejected_since_last_failure": ccrsRejected,
 						"goroutines":                      config.Threads,
@@ -339,7 +336,7 @@ func genStartEndTime(config *Config) (time.Time, time.Time) {
 
 func randAttributeMapKey(m map[string]interface{}) string {
 	i := rand.Intn(len(m))
-	for k, _ := range m {
+	for k := range m {
 		if i == 0 {
 			return k
 		}
@@ -428,7 +425,7 @@ func randomChefClientRun(config *Config, chefClient chef.Client, nodeName string
 		SkipSSL: true,
 	}, requests)
 	if err != nil {
-		return 999, errors.New(fmt.Sprintf("Error creating DataCollectorClient: %+v \n", err))
+		return 999, fmt.Errorf("error creating DataCollectorClient: %+w", err)
 	}
 
 	// Notify Data Collector of run start

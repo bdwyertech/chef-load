@@ -53,7 +53,7 @@ func apiRequest(nodeClient chef.Client, nodeName, chefVersion, method, url strin
 	}
 	t0 := time.Now()
 	res, err := nodeClient.Do(req, v)
-	request_time := time.Now().Sub(t0)
+	request_time := time.Since(t0)
 	statusCode := 999
 	if res != nil {
 		defer res.Body.Close()
@@ -127,7 +127,7 @@ func parseJSONFile(jsonFile string) map[string]interface{} {
 type amountOfRequests map[request]uint64
 
 var bookshelfRE = regexp.MustCompile("/bookshelf/.*")
-var nodeRE = regexp.MustCompile("(/nodes/.*-)\\d+(/.*)?")
+var nodeRE = regexp.MustCompile(`(/nodes/.*-)\d+(/.*)?`)
 var rolesRE = regexp.MustCompile("/roles/.*")
 
 func (a amountOfRequests) addRequest(req request) {

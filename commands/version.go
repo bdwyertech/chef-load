@@ -26,7 +26,7 @@ import (
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: fmt.Sprintf("Display the chef-load version"),
+	Short: "Display the chef-load version",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("chef-load", chef_load.VERSION)
 	},

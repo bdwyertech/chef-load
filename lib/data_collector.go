@@ -21,7 +21,6 @@ package chef_load
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -107,7 +106,7 @@ func (dcc *DataCollectorClient) Update(nodeName string, body interface{}) (*http
 	// Do request
 	t0 := time.Now()
 	res, err := dcc.Client.Do(req)
-	request_time := time.Now().Sub(t0)
+	request_time := time.Since(t0)
 	statusCode := 999
 	if res != nil {
 		defer res.Body.Close()
@@ -125,7 +124,7 @@ func (dcc *DataCollectorClient) Update(nodeName string, body interface{}) (*http
 
 	if res != nil {
 		if !(res.StatusCode >= 200 && res.StatusCode <= 299) {
-			return res, errors.New(fmt.Sprintf("POST %s: %s", dcc.URL.String(), res.Status))
+			return res, fmt.Errorf("POST %s: %s", dcc.URL.String(), res.Status)
 		}
 	}
 
@@ -175,7 +174,7 @@ func dataCollectorRunStop(config *Config, node chef.Node, nodeName, chefServerFQ
 	startTime, endTime time.Time, convergeJSON map[string]interface{}) interface{} {
 
 	convergedRunList := []interface{}{}
-	convergedExpandedRunListMap := map[string]interface{}{}
+	var convergedExpandedRunListMap map[string]interface{}
 	if convergeJSON["run_list"] != nil && convergeJSON["expanded_run_list"] != nil {
 		convergedRunList = convergeJSON["run_list"].([]interface{})
 		convergedExpandedRunListMap = convergeJSON["expanded_run_list"].(map[string]interface{})

@@ -18,7 +18,6 @@
 package chef_load
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -252,7 +251,7 @@ func GenerateChefActions(config *Config, requests chan *request) error {
 		SkipSSL: true,
 	}, requests)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error creating DataCollectorClient: %+v \n", err))
+		return fmt.Errorf("error creating DataCollectorClient: %+w", err)
 	}
 
 	for i := 1; i <= config.NumActions; i++ {

@@ -96,7 +96,7 @@ func configFromViper() (*chef_load.Config, error) {
 	}
 
 	if cfg.ChefServerURL == "" && cfg.DataCollectorURL == "" {
-		return nil, errors.New("You must set chef_server_url or data_collector_url or both")
+		return nil, errors.New("you must set chef_server_url or data_collector_url or both")
 	}
 
 	if cfg.ChefServerURL != "" {
@@ -105,7 +105,7 @@ func configFromViper() (*chef_load.Config, error) {
 			cfg.ChefServerURL = cfg.ChefServerURL + "/"
 		}
 		if cfg.ClientName == "" || cfg.ClientKey == "" {
-			return nil, errors.New("You must set client_name and client_key if chef_server_url is set")
+			return nil, errors.New("you must set client_name and client_key if chef_server_url is set")
 		}
 	}
 

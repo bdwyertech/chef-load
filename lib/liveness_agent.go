@@ -18,7 +18,6 @@
 package chef_load
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -71,12 +70,12 @@ func GenerateLivenessData(config *Config, requests chan *request) error {
 		SkipSSL: true,
 	}, requests)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error creating DataCollectorClient: %+v \n", err))
+		return fmt.Errorf("error creating DataCollectorClient: %+w", err)
 	}
 
 	chefServerURL, err := url.ParseRequestURI(config.ChefServerURL)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error parsing ChefServer URL: %+v \n", err))
+		return fmt.Errorf("error parsing ChefServer URL: %+w", err)
 	}
 
 	for i := 1; i <= config.NumNodes; i++ {
