@@ -5,7 +5,7 @@ github.com/corpix/uarand
 github.com/davecgh/go-spew/spew
 # github.com/fsnotify/fsnotify v1.5.1
 github.com/fsnotify/fsnotify
-# github.com/go-chef/chef v0.24.5
+# github.com/go-chef/chef v0.27.0
 ## explicit
 github.com/go-chef/chef
 # github.com/google/uuid v1.3.0
