@@ -184,7 +184,7 @@ func loadSampleReport(config *Config, platform string, format string) map[string
 	return complianceJSON
 }
 
-//func generate_reports(nodes []NodeDetails, platforms []string, simulation, handler) {
+// func generate_reports(nodes []NodeDetails, platforms []string, simulation, handler) {
 func generateReports(config *Config, nodes []NodeDetails, requests chan *request) {
 	endTime := time.Now().UTC()
 
