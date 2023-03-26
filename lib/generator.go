@@ -401,9 +401,7 @@ func randomChefClientRun(config *Config, chefClient chef.Client, nodeName string
 		if res != nil && res.StatusCode == 404 {
 			apiRequest(chefClient, nodeName, config.ChefVersion, "POST", "nodes", node, nil, nil, requests)
 		}
-	}
 
-	if config.RunChefClient {
 		// Expand run_list
 		expandedRunList = runList.expand(&chefClient, nodeName, config.ChefVersion, node.Environment, requests)
 

@@ -18,10 +18,10 @@
 package chef_load
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/go-chef/chef"
+	"github.com/hashicorp/go-retryablehttp"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -78,18 +79,21 @@ func apiRequest(nodeClient chef.Client, nodeName, chefVersion, method, url strin
 		return res, err
 	}
 
-	ioutil.ReadAll(res.Body)
+	io.ReadAll(res.Body)
 	return res, err
 }
 
 func getAPIClient(clientName, privateKeyPath, chefServerURL string) chef.Client {
-	privateKey := getPrivateKey(privateKeyPath)
-
+	crt := retryablehttp.NewClient()
+	crt.RetryMax = 10
+	crt.Logger = retryablehttp.LeveledLogger(&LeveledLogrus{log.StandardLogger()})
+	crt.HTTPClient.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	client, err := chef.NewClient(&chef.Config{
 		Name:    clientName,
-		Key:     privateKey,
+		Key:     getPrivateKey(privateKeyPath),
 		BaseURL: chefServerURL,
 		SkipSSL: true,
+		Client:  crt.StandardClient(),
 	})
 	if err != nil {
 		log.WithField("error", err).Error("Could not create API client")
@@ -98,7 +102,7 @@ func getAPIClient(clientName, privateKeyPath, chefServerURL string) chef.Client 
 }
 
 func getPrivateKey(privateKeyPath string) string {
-	fileContent, err := ioutil.ReadFile(privateKeyPath)
+	fileContent, err := os.ReadFile(privateKeyPath)
 	if err != nil {
 		log.WithField("error", err).Errorf("Could not read private key %s", privateKeyPath)
 	}
@@ -188,4 +192,33 @@ func printAPIRequestProfile(startTime time.Time, numRequests map[request]uint64)
 		log.Info(fmt.Sprintf("%-10.2f   %-*d   %-6d   %-6s   %s",
 			percentOfTotal, amountFieldWidth, count, request.StatusCode, request.Method, request.Url))
 	}
+}
+
+type LeveledLogrus struct {
+	*log.Logger
+}
+
+func (l *LeveledLogrus) Error(msg string, keysAndValues ...interface{}) {
+	l.WithFields(fields(keysAndValues)).Error(msg)
+}
+
+func (l *LeveledLogrus) Info(msg string, keysAndValues ...interface{}) {
+	l.WithFields(fields(keysAndValues)).Info(msg)
+}
+func (l *LeveledLogrus) Debug(msg string, keysAndValues ...interface{}) {
+	l.WithFields(fields(keysAndValues)).Debug(msg)
+}
+
+func (l *LeveledLogrus) Warn(msg string, keysAndValues ...interface{}) {
+	l.WithFields(fields(keysAndValues)).Warn(msg)
+}
+
+func fields(keysAndValues []interface{}) map[string]interface{} {
+	fields := make(map[string]interface{})
+
+	for i := 0; i < len(keysAndValues)-1; i += 2 {
+		fields[keysAndValues[i].(string)] = keysAndValues[i+1]
+	}
+
+	return fields
 }

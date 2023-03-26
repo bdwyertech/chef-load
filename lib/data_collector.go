@@ -23,7 +23,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
@@ -132,7 +131,7 @@ func (dcc *DataCollectorClient) Update(nodeName string, body interface{}) (*http
 		return res, err
 	}
 
-	ioutil.ReadAll(res.Body)
+	io.ReadAll(res.Body)
 	return res, err
 }
 
